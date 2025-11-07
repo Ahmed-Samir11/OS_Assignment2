@@ -7,21 +7,15 @@ import java.util.List;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
-/**
- * CarWashGUI (View) updated to MVC: listens to CarWashModel and controls a CarWashController.
- */
 public class CarWashGUI extends JFrame implements PropertyChangeListener {
 
     private final CarWashModel model;
-    private final CarWashController controller;
 
-    // View components
     private final DefaultListModel<String> queueModel = new DefaultListModel<>();
     private final JList<String> queueList = new JList<>(queueModel);
 
     private final DefaultListModel<String> logModel = new DefaultListModel<>();
     private final JList<String> logList = new JList<>(logModel);
-    // keep all log entries (unfiltered) so we can apply UI filters
     private final java.util.List<String> allLogs = new java.util.ArrayList<>();
 
     private JProgressBar[] progressBars;
@@ -34,14 +28,12 @@ public class CarWashGUI extends JFrame implements PropertyChangeListener {
 
     private final DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("HH:mm:ss");
 
-    public CarWashGUI(CarWashModel model, CarWashController controller, int queueCapacity) {
+    public CarWashGUI(CarWashModel model, Object unused, int queueCapacity) {
         super("Car Wash & Gas Station Simulation");
         this.model = model;
-        this.controller = controller;
 
         model.addPropertyChangeListener(this);
     initUi(model.getNumPumps(), queueCapacity);
-    // initialize animation targets to pumps count
     targetProgress = new int[progressBars.length];
     for (int i = 0; i < progressBars.length; i++) targetProgress[i] = 0;
     ensureAnimTimer();
@@ -110,38 +102,15 @@ public class CarWashGUI extends JFrame implements PropertyChangeListener {
         logList.setVisibleRowCount(8);
         logPanel.add(new JScrollPane(logList), BorderLayout.CENTER);
 
-        // Controls
         JPanel controls = new JPanel(new FlowLayout(FlowLayout.LEFT));
-    JButton startBtn = new JButton("Start");
-    startBtn.setMnemonic('S');
-    JButton pauseBtn = new JButton("Pause");
-    pauseBtn.setMnemonic('P');
-    JButton resumeBtn = new JButton("Resume");
-    resumeBtn.setMnemonic('R');
-    JButton stopBtn = new JButton("Stop");
-    stopBtn.setMnemonic('T');
-        JSlider speed = new JSlider(100, 2000, 800);
-        speed.setToolTipText("Simulation speed (ms)");
     JButton saveLog = new JButton("Save log");
     saveLog.setMnemonic('L');
-    // log filter combo
     JComboBox<String> filterBox = new JComboBox<>(new String[]{"ALL", "INFO", "DEBUG"});
     filterBox.setToolTipText("Filter log level");
 
-        startBtn.addActionListener(e -> controller.start());
-        pauseBtn.addActionListener(e -> controller.pause());
-        resumeBtn.addActionListener(e -> controller.resume());
-        stopBtn.addActionListener(e -> controller.stop());
-        speed.addChangeListener(e -> controller.setDelayMs(speed.getValue()));
     saveLog.addActionListener(e -> saveLogToFile());
     filterBox.addActionListener(e -> applyLogFilter((String) filterBox.getSelectedItem()));
 
-        controls.add(startBtn);
-        controls.add(pauseBtn);
-        controls.add(resumeBtn);
-        controls.add(stopBtn);
-        controls.add(new JLabel("Speed:"));
-        controls.add(speed);
     controls.add(saveLog);
     controls.add(new JLabel("Filter:"));
     controls.add(filterBox);
@@ -166,23 +135,10 @@ public class CarWashGUI extends JFrame implements PropertyChangeListener {
     mainPanel.add(controls, BorderLayout.NORTH);
     mainPanel.add(split, BorderLayout.CENTER);
 
-    // Accessibility: set names and descriptions
     queueList.getAccessibleContext().setAccessibleName("Waiting Queue");
     queueList.getAccessibleContext().setAccessibleDescription("List of cars waiting for service");
     logList.getAccessibleContext().setAccessibleName("Activity Log");
     logList.getAccessibleContext().setAccessibleDescription("Timestamped activity messages");
-
-    // Add keyboard accelerators (global) for common actions
-    InputMap im = getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
-    ActionMap am = getRootPane().getActionMap();
-    im.put(KeyStroke.getKeyStroke("control S"), "startAction");
-    im.put(KeyStroke.getKeyStroke("control P"), "pauseAction");
-    im.put(KeyStroke.getKeyStroke("control R"), "resumeAction");
-    im.put(KeyStroke.getKeyStroke("control T"), "stopAction");
-    am.put("startAction", new AbstractAction() { public void actionPerformed(java.awt.event.ActionEvent e){ controller.start(); } });
-    am.put("pauseAction", new AbstractAction() { public void actionPerformed(java.awt.event.ActionEvent e){ controller.pause(); } });
-    am.put("resumeAction", new AbstractAction() { public void actionPerformed(java.awt.event.ActionEvent e){ controller.resume(); } });
-    am.put("stopAction", new AbstractAction() { public void actionPerformed(java.awt.event.ActionEvent e){ controller.stop(); } });
     }
 
     private void saveLogToFile() {
@@ -337,16 +293,5 @@ public class CarWashGUI extends JFrame implements PropertyChangeListener {
             String msg = (String) evt.getNewValue();
             appendLog(msg);
         }
-    }
-
-    // Minimal harness: start GUI and controller
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            CarWashModel model = new CarWashModel(3);
-            CarWashController controller = new CarWashController(model);
-            new CarWashGUI(model, controller, 5);
-            // optionally auto-start
-            controller.start();
-        });
     }
 }
