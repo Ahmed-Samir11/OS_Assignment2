@@ -71,7 +71,7 @@ public class CarWashGUI extends JFrame implements PropertyChangeListener {
             // we'll show percent on the label beneath the bar for better legibility
             progressBars[i].setStringPainted(false);
             // make bars wider so the icon + label have room and percent is readable in the label
-            progressBars[i].setPreferredSize(new Dimension(60, 160));
+            progressBars[i].setPreferredSize(new Dimension(80, 180));
 
             carLabels[i] = new JLabel("Free", SwingConstants.CENTER);
             carLabels[i].setOpaque(true);
