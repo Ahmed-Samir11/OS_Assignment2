@@ -2,6 +2,7 @@ import java.util.InputMismatchException;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.Scanner;
+import java.util.concurrent.atomic.AtomicLong;
 import javax.swing.SwingUtilities;
 
 public class ServiceStation {
@@ -14,6 +15,10 @@ public class ServiceStation {
     
     private static CarWashModel guiModel = null;
     private static CarWashGUI gui = null;
+    
+    public static final AtomicLong totalWaitTime = new AtomicLong(0);
+    public static final AtomicLong totalWorkTime = new AtomicLong(0);
+    public static final AtomicLong semaphoreWaitCount = new AtomicLong(0);
 
     public static synchronized void log(String message) {
         System.out.println(message);
@@ -126,7 +131,59 @@ public class ServiceStation {
             Thread.currentThread().interrupt();
         }
         
+        try {
+            Thread.sleep(10000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        
+        printEfficiencyAnalysis();
+        
         scanner.close();
+    }
+    
+    private static void printEfficiencyAnalysis() {
+        System.out.println("\n" + "=".repeat(80));
+        System.out.println("COMPUTATIONAL EFFICIENCY ANALYSIS");
+        System.out.println("=".repeat(80));
+        
+        long totalWaitNs = totalWaitTime.get();
+        long totalWorkNs = totalWorkTime.get();
+        long waitCount = semaphoreWaitCount.get();
+        
+        double totalWaitMs = totalWaitNs / 1_000_000.0;
+        double totalWorkMs = totalWorkNs / 1_000_000.0;
+        double totalTimeMs = totalWaitMs + totalWorkMs;
+        
+        System.out.println("Total time spent waiting on semaphores: " + String.format("%.2f", totalWaitMs) + " ms");
+        System.out.println("Total time spent doing actual work: " + String.format("%.2f", totalWorkMs) + " ms");
+        System.out.println("Total execution time: " + String.format("%.2f", totalTimeMs) + " ms");
+        System.out.println("Number of semaphore wait operations: " + waitCount);
+        
+        if (waitCount > 0) {
+            double avgWaitMs = totalWaitMs / waitCount;
+            System.out.println("Average wait time per semaphore operation: " + String.format("%.3f", avgWaitMs) + " ms");
+        }
+        
+        if (totalTimeMs > 0) {
+            double workPercentage = (totalWorkMs / totalTimeMs) * 100;
+            double waitPercentage = (totalWaitMs / totalTimeMs) * 100;
+            double efficiency = totalWorkMs / totalTimeMs;
+            
+            System.out.println("\nTime Distribution:");
+            System.out.println("  Work time: " + String.format("%.2f%%", workPercentage));
+            System.out.println("  Wait time: " + String.format("%.2f%%", waitPercentage));
+            System.out.println("  Efficiency ratio: " + String.format("%.4f", efficiency));
+        }
+        
+        System.out.println("\nSYNCHRONIZATION EFFECTS:");
+        System.out.println("- Synchronization introduces overhead through context switching and blocking");
+        System.out.println("- Wait time represents threads blocked on semaphores (mutex, empty, full, pumps)");
+        System.out.println("- Work time includes queue operations, service simulation, and logging");
+        System.out.println("- The efficiency ratio shows productive work vs synchronization overhead");
+        System.out.println("- Higher wait percentages indicate more resource contention");
+        System.out.println("- Trade-off: synchronization ensures correctness but reduces throughput");
+        System.out.println("=".repeat(80) + "\n");
     }
 }
 
@@ -139,6 +196,7 @@ class Semaphore {
     }
 
     public synchronized void waitSemaphore() {
+        long startWait = System.nanoTime();
         while (value <= 0) {
             try {
                 wait();
@@ -147,6 +205,9 @@ class Semaphore {
                 System.out.println("Thread interrupted during waitSemaphore.");
             }
         }
+        long waitDuration = System.nanoTime() - startWait;
+        ServiceStation.totalWaitTime.addAndGet(waitDuration);
+        ServiceStation.semaphoreWaitCount.incrementAndGet();
         value--;
     }
 
@@ -209,6 +270,7 @@ class Car implements Runnable {
     @Override
     public void run() {
         try {
+            long workStart = System.nanoTime();
             recordArrival();
             ServiceStation.log(carName + " arrived.");
 
@@ -231,6 +293,9 @@ class Car implements Runnable {
             recordDeparture();
             ServiceStation.log(carName + " service completed, leaving. (Wait: " +
                     getWaitingTime() + "ms, Service: " + getServiceTime() + "ms, Total: " + getTotalTime() + "ms)");
+            
+            long workDuration = System.nanoTime() - workStart;
+            ServiceStation.totalWorkTime.addAndGet(workDuration);
 
         } catch (Exception e) {
             ServiceStation.log(carName + " encountered an error: " + e.getMessage());
@@ -272,6 +337,7 @@ class Pump implements Runnable {
                     ServiceStation.syncQueueToGUI();
 
                     long serviceDuration = (long) (Math.random() * 2000) + 1000;
+                    long workStart = System.nanoTime();
                     long startTime = System.currentTimeMillis();
                     long endTime = startTime + serviceDuration;
                     
@@ -292,6 +358,9 @@ class Pump implements Runnable {
                     ServiceStation.pumps.signalSemaphore();
                     
                     ServiceStation.updatePumpState(pumpId, null, 0);
+                    
+                    long workDuration = System.nanoTime() - workStart;
+                    ServiceStation.totalWorkTime.addAndGet(workDuration);
                 }
 
             } catch (InterruptedException e) {
