@@ -1,3 +1,9 @@
+/*
+ * ServiceStation.java
+ * Names: Ahmed Samir, Loay Medhat, Ahmed Abdelsamea, Youssef Abd Al Razzak, Mohamed Ahmed
+ * IDs: 20230541, 20230583, 20231010, 20231212, 20231131
+ */
+
 import java.util.InputMismatchException;
 import java.util.LinkedList;
 import java.util.Queue;
@@ -144,7 +150,7 @@ public class ServiceStation {
     
     private static void printEfficiencyAnalysis() {
         System.out.println("\n" + "=".repeat(80));
-        System.out.println("COMPUTATIONAL EFFICIENCY ANALYSIS");
+        System.out.println("Computational Efficiency Analysis");
         System.out.println("=".repeat(80));
         
         long totalWaitNs = totalWaitTime.get();
